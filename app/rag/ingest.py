@@ -67,10 +67,22 @@ def _collect_files(docs_dir: Path) -> list[Path]:
 
 
 def ingest(path: str | None = None, *, reset: bool = False) -> int:
-    """Ingest docs into the knowledge store. Returns the number of chunks upserted."""
+    """Ingest docs into the knowledge store. Returns the number of chunks upserted.
+
+    ``CRM_DOCUMENTATION.md`` (the primary CRM knowledge base) is always ingested
+    when present, in addition to any files found in ``KNOWLEDGE_DOCS_DIR``.
+    If neither source yields files, the legacy ``CRM_BACKEND_API.md`` is used as
+    a last-resort fallback.
+    """
     settings = get_settings()
     docs_dir = Path(path or settings.KNOWLEDGE_DOCS_DIR)
     files = _collect_files(docs_dir)
+
+    # Always include the primary CRM knowledge base if it exists.
+    crm_doc = Path("CRM_DOCUMENTATION.md")
+    if crm_doc.exists() and crm_doc not in files:
+        files = [crm_doc] + list(files)
+        logger.info("Including primary knowledge base: %s", crm_doc)
 
     if not files:
         fallback = Path("CRM_BACKEND_API.md")
